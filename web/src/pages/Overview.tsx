@@ -5,7 +5,8 @@ import { useAsync, useDataVersion } from '../hooks';
 import { useI18n } from '../i18n';
 import { fmtCompact, fmtNum, providerName, relTime, TOOL_NAMES } from '../format';
 import { AiqScale, Heatmap, Radar, ToolShare } from '../components/charts';
-import { ErrorState, Meter, Panel, Skeleton, ToolDot } from '../components/ui';
+import { CountUp, ErrorState, Meter, Panel, Skeleton, ToolDot } from '../components/ui';
+import { useCountUp, useInView } from '../motion';
 import type { ToolId } from '../../../src/core/types';
 
 export function OverviewPage() {
@@ -37,9 +38,15 @@ export function OverviewPage() {
 function Hero({ data }: { data: OverviewResponse }) {
   const { t, lang } = useI18n();
   const gap = Math.max(0, 130 - data.aiq);
+  // the score climbs from the bottom of the scale; the stamp lands when it arrives
+  const COUNT_MS = 1300;
+  const aiq = useCountUp(data.aiq, { from: 70, duration: COUNT_MS, delay: 150 });
   return (
-    <section className="rise grid border border-rule bg-surface lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-      <div className="relative flex flex-col border-b border-rule px-5 pb-6 pt-5 sm:px-8 sm:pt-7 lg:border-b-0 lg:border-r">
+    <section
+      className="rise grid border border-rule bg-surface lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]"
+      style={{ '--stamp-delay': `${(COUNT_MS + 250) / 1000}s` } as CSSProperties}
+    >
+      <div className="thud relative flex flex-col border-b border-rule px-5 pb-6 pt-5 sm:px-8 sm:pt-7 lg:border-b-0 lg:border-r">
         <div className="flex items-center justify-between gap-3">
           <span className="eyebrow">{t('ov.eyebrow')}</span>
           <span className="eyebrow num">{new Date(data.generatedAt).toISOString().slice(0, 10)}</span>
@@ -50,13 +57,14 @@ function Hero({ data }: { data: OverviewResponse }) {
             <div
               className="num font-serif leading-[0.85] tracking-tight text-ink"
               style={{ fontSize: 'clamp(88px, 17vw, 148px)' }}
+              aria-label={String(data.aiq)}
             >
-              {data.aiq}
+              {Math.round(aiq)}
             </div>
           </div>
           <div className="pb-3">
             {data.mensaClass ? (
-              <span className="stamp">
+              <span className="stamp late">
                 <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
                   <polygon points="6,0.5 7.6,4.3 11.5,4.5 8.4,7 9.5,11 6,8.7 2.5,11 3.6,7 0.5,4.5 4.4,4.3" fill="currentColor" />
                 </svg>
@@ -68,7 +76,7 @@ function Hero({ data }: { data: OverviewResponse }) {
           </div>
         </div>
         <div className="mt-6">
-          <AiqScale aiq={data.aiq} />
+          <AiqScale aiq={aiq} />
         </div>
         <p className="mt-2 text-[11px] leading-relaxed text-faint">{t('ov.scaleNote')}</p>
         <div className="mt-auto pt-5 text-xs text-muted">
@@ -97,12 +105,14 @@ function Hero({ data }: { data: OverviewResponse }) {
 
 function Totals({ data }: { data: OverviewResponse }) {
   const { t, lang } = useI18n();
-  const items: { label: string; value: string; sub?: string }[] = [
-    { label: t('ov.totals.sessions'), value: fmtNum(data.totals.sessions, lang) },
-    { label: t('ov.totals.userTurns'), value: fmtCompact(data.totals.userTurns, lang) },
-    { label: t('ov.totals.toolCalls'), value: fmtCompact(data.totals.toolCalls, lang) },
-    { label: t('ov.totals.projects'), value: fmtNum(data.totals.projects, lang) },
-    { label: t('ov.totals.activeDays'), value: `${data.totals.activeDays30}`, sub: '/30' },
+  const num = (n: number) => fmtNum(Math.round(n), lang);
+  const compact = (n: number) => fmtCompact(Math.round(n), lang);
+  const items: { label: string; value: number; format: (n: number) => string; sub?: string }[] = [
+    { label: t('ov.totals.sessions'), value: data.totals.sessions, format: num },
+    { label: t('ov.totals.userTurns'), value: data.totals.userTurns, format: compact },
+    { label: t('ov.totals.toolCalls'), value: data.totals.toolCalls, format: compact },
+    { label: t('ov.totals.projects'), value: data.totals.projects, format: num },
+    { label: t('ov.totals.activeDays'), value: data.totals.activeDays30, format: num, sub: '/30' },
   ];
   return (
     <dl
@@ -116,7 +126,7 @@ function Totals({ data }: { data: OverviewResponse }) {
         >
           <dt className="eyebrow">{it.label}</dt>
           <dd className="num mt-1 font-serif text-3xl text-ink">
-            {it.value}
+            <CountUp value={it.value} format={it.format} delay={250 + i * 60} />
             {it.sub && <span className="ml-0.5 font-mono text-sm text-faint">{it.sub}</span>}
           </dd>
         </div>
@@ -146,18 +156,23 @@ function AxisCard({ axis, index }: { axis: AxisScore; index: number }) {
   const { t, lang } = useI18n();
   const advice = lang === 'ja' ? axis.adviceJa : axis.advice;
   const heuristic = axis.id === 'prompting' || axis.id === 'efficiency';
+  const [ref, inView] = useInView<HTMLElement>();
   return (
-    <article className="rise flex min-w-0 flex-col bg-surface px-5 pb-5 pt-4" style={{ '--i': 3 + index } as CSSProperties}>
+    <article
+      ref={ref}
+      className="rise lift flex min-w-0 flex-col bg-surface px-5 pb-5 pt-4"
+      style={{ '--i': 3 + index } as CSSProperties}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="eyebrow num">{String(index + 1).padStart(2, '0')} · {axis.id}</div>
           <h3 className="mt-0.5 font-serif text-xl text-ink">{lang === 'ja' ? axis.labelJa : axis.label}</h3>
         </div>
         <div className="num shrink-0 font-serif text-4xl leading-none text-ink">
-          {Math.round(axis.score)}
+          <CountUp value={axis.score} start={inView} delay={index * 60} />
         </div>
       </div>
-      <Meter value={axis.score} className="mt-3" />
+      <Meter value={axis.score} className="mt-3" delay={index * 60} />
       {axis.llmScore !== null && (
         <div className="mt-3 grid grid-cols-2 gap-3 text-[11px]">
           <div>
@@ -165,14 +180,14 @@ function AxisCard({ axis, index }: { axis: AxisScore; index: number }) {
               <span>{t('ov.statistical')}</span>
               <span className="num font-mono text-ink">{Math.round(axis.statScore)}</span>
             </div>
-            <Meter value={axis.statScore} tone="muted" className="mt-1" />
+            <Meter value={axis.statScore} tone="muted" className="mt-1" delay={200 + index * 60} />
           </div>
           <div>
             <div className="flex justify-between text-muted">
               <span>{t('ov.llmScore')}</span>
               <span className="num font-mono text-accent">{Math.round(axis.llmScore)}</span>
             </div>
-            <Meter value={axis.llmScore} tone="accent" className="mt-1" />
+            <Meter value={axis.llmScore} tone="accent" className="mt-1" delay={300 + index * 60} />
           </div>
         </div>
       )}

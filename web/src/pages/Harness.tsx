@@ -5,7 +5,7 @@ import { api } from '../api';
 import { useAsync, useDataVersion } from '../hooks';
 import { useI18n, type MsgKey } from '../i18n';
 import { fmtDateTime, fmtNum, relTime, toolColor } from '../format';
-import { EmptyState, ErrorState, Skeleton, Tag, cx } from '../components/ui';
+import { CountUp, EmptyState, ErrorState, Skeleton, Tag, cx } from '../components/ui';
 
 const KINDS: HarnessKind[] = ['instruction', 'skill', 'agent', 'command', 'hook', 'mcp', 'permission', 'rule', 'plugin'];
 const PAGE = 30;
@@ -86,7 +86,7 @@ function ToolBlock({ block, i }: { block: HarnessToolBlock; i: number }) {
 
       {/* counts by kind */}
       <div className="grid grid-cols-3 border-b border-rule sm:grid-cols-5 lg:grid-cols-9">
-        {KINDS.map((k) => {
+        {KINDS.map((k, ki) => {
           const n = block.counts[k] ?? block.items.filter((x) => x.kind === k).length;
           const active = kind === k;
           return (
@@ -105,7 +105,7 @@ function ToolBlock({ block, i }: { block: HarnessToolBlock; i: number }) {
                 {t(kindKey(k))}
               </div>
               <div className={cx('num font-serif text-2xl leading-tight', active ? 'text-paper' : n ? 'text-ink' : 'text-faint/60')}>
-                {n}
+                <CountUp value={n} duration={800} delay={150 + ki * 40} />
               </div>
             </button>
           );

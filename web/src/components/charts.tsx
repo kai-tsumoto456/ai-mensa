@@ -1,8 +1,10 @@
-import { useId, useMemo } from 'react';
+import { useId, useMemo, type CSSProperties } from 'react';
 import type { AxisScore, OverviewResponse } from '../../../src/server/api-types';
 import type { ToolId } from '../../../src/core/types';
 import { useI18n } from '../i18n';
 import { fmtDay, fmtMonth, fmtNum, localDate, toolColor } from '../format';
+import { useInView } from '../motion';
+import { CountUp } from './ui';
 
 /* ------------------------------------------------------------------ */
 /* AIQ scale: 70–150 with a reference bell curve and the 130+ band     */
@@ -35,19 +37,19 @@ export function AiqScale({ aiq }: { aiq: number }) {
 
   const ticks = [70, 85, 100, 115, 130, 150];
   return (
-    <svg viewBox={`-8 0 ${W + 16} ${H}`} className="block w-full" role="img" aria-label={`AIQ ${aiq} on a 70–150 scale`}>
+    <svg viewBox={`-8 0 ${W + 16} ${H}`} className="block w-full" role="img" aria-label={`AIQ ${Math.round(aiq)} on a 70–150 scale`}>
       <defs>
         <pattern id={`hatch-${uid}`} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <line x1="0" y1="0" x2="0" y2="5" stroke="var(--accent)" strokeWidth="1.2" strokeOpacity="0.55" />
         </pattern>
       </defs>
       {/* 130+ band */}
-      <rect x={x(130)} y={10} width={x(150) - x(130)} height={base - 10} fill={`url(#hatch-${uid})`} opacity="0.5" />
+      <rect className="fade-in" style={{ '--d': '0.5s' } as CSSProperties} x={x(130)} y={10} width={x(150) - x(130)} height={base - 10} fill={`url(#hatch-${uid})`} opacity="0.5" />
       <text x={x(140)} y={22} textAnchor="middle" fontSize="10" fill="var(--accent)" fontFamily="var(--font-mono)" letterSpacing="1.2">
         MENSA
       </text>
       <polygon points={areaTo(clamped)} fill="var(--data)" opacity="0.2" />
-      <polyline points={curve.join(' ')} fill="none" stroke="var(--ink-2)" strokeWidth="1.2" />
+      <polyline className="draw" pathLength={1} points={curve.join(' ')} fill="none" stroke="var(--ink-2)" strokeWidth="1.2" />
       <line x1={0} x2={W} y1={base} y2={base} stroke="var(--rule-strong)" />
       {ticks.map((v) => (
         <g key={v}>
@@ -99,9 +101,11 @@ export function Radar({ axes }: { axes: AxisScore[] }) {
   return (
     <figure className="m-0">
       <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block w-full max-w-[520px]" role="img" aria-label={t('ov.radar')}>
-        {[25, 50, 75, 100].map((r) => (
+        {[25, 50, 75, 100].map((r, ri) => (
           <polygon
             key={r}
+            className="fade-in"
+            style={{ '--d': `${ri * 0.08}s` } as CSSProperties}
             points={poly(axes.map(() => r))}
             fill={r === 100 ? 'var(--sunken)' : 'none'}
             fillOpacity={r === 100 ? 0.45 : 0}
@@ -144,7 +148,19 @@ export function Radar({ axes }: { axes: AxisScore[] }) {
           />
           {axes.map((a, i) => {
             const [px, py] = pt(i, a.score);
-            return <circle key={a.id} cx={px} cy={py} r="3.5" fill="var(--surface)" stroke="var(--data)" strokeWidth="2" />;
+            return (
+              <circle
+                key={a.id}
+                className="pop"
+                style={{ '--d': `${0.55 + i * 0.07}s` } as CSSProperties}
+                cx={px}
+                cy={py}
+                r="3.5"
+                fill="var(--surface)"
+                stroke="var(--data)"
+                strokeWidth="2"
+              />
+            );
           })}
           {axes.map((a, i) => {
             if (a.llmScore === null) return null;
@@ -192,7 +208,7 @@ export function Radar({ axes }: { axes: AxisScore[] }) {
                 fontFamily="var(--font-mono)"
                 fontWeight="600"
               >
-                {Math.round(a.score)}
+                <CountUp value={a.score} delay={300 + i * 70} />
               </text>
             </g>
           );
@@ -225,6 +241,7 @@ export function Radar({ axes }: { axes: AxisScore[] }) {
 
 export function Heatmap({ activity }: { activity: OverviewResponse['activity'] }) {
   const { lang, t } = useI18n();
+  const [ref, inView] = useInView<HTMLDivElement>();
   const cell = 13;
   const gap = 3;
   const step = cell + gap;
@@ -272,10 +289,10 @@ export function Heatmap({ activity }: { activity: OverviewResponse['activity'] }
   const activeDays = activity.filter((d) => d.sessions > 0).length;
 
   return (
-    <div>
+    <div ref={ref}>
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="block w-full"
+        className={`heat block w-full${inView ? ' in' : ''}`}
         style={{ maxWidth: Math.round(W * 1.9) }}
         role="img"
         aria-label={t('ov.activity')}
@@ -300,7 +317,8 @@ export function Heatmap({ activity }: { activity: OverviewResponse['activity'] }
             width={cell}
             height={cell}
             rx="2"
-            style={{ fill: fills[c.level] }}
+            className="cell"
+            style={{ fill: fills[c.level], '--d': `${(c.col * 0.035 + c.row * 0.012).toFixed(3)}s` } as CSSProperties}
             stroke={c.level === 0 ? 'var(--rule)' : 'none'}
             strokeWidth="0.6"
           >
@@ -337,10 +355,11 @@ export function ToolShare({ tools }: { tools: OverviewResponse['tools'] }) {
   const total = tools.reduce((s, x) => s + x.sessions, 0);
   const sorted = [...tools].sort((a, b) => Number(b.found) - Number(a.found) || b.sessions - a.sessions);
   const withSessions = sorted.filter((x) => x.sessions > 0);
+  const [ref, inView] = useInView<HTMLDivElement>();
 
   return (
-    <div>
-      <div className="flex h-3 w-full overflow-hidden rounded-[2px] bg-sunken" aria-hidden>
+    <div ref={ref}>
+      <div className={`grow-x flex h-3 w-full overflow-hidden rounded-[2px] bg-sunken${inView ? ' in' : ''}`} aria-hidden>
         {withSessions.map((x) => (
           <div
             key={x.tool}
@@ -350,10 +369,10 @@ export function ToolShare({ tools }: { tools: OverviewResponse['tools'] }) {
         ))}
       </div>
       <ul className="mt-4 divide-y divide-rule">
-        {sorted.map((x) => {
+        {sorted.map((x, i) => {
           const share = total ? (x.sessions / total) * 100 : 0;
           return (
-            <li key={x.tool} className="flex items-center gap-3 py-2.5">
+            <li key={x.tool} className={`reveal flex items-center gap-3 py-2.5${inView ? ' in' : ''}`} style={{ transitionDelay: `${0.25 + i * 0.07}s` }}>
               <span
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ background: x.found ? toolColor(x.tool) : 'transparent', border: x.found ? undefined : '1px dashed var(--faint)' }}
@@ -366,7 +385,9 @@ export function ToolShare({ tools }: { tools: OverviewResponse['tools'] }) {
               </div>
               {x.found && (
                 <div className="text-right">
-                  <div className="num font-mono text-sm text-ink">{fmtNum(x.sessions, lang)}</div>
+                  <div className="num font-mono text-sm text-ink">
+                    <CountUp value={x.sessions} start={inView} format={(n) => fmtNum(n, lang)} />
+                  </div>
                   <div className="num font-mono text-[10.5px] text-muted">{share.toFixed(share < 10 && share > 0 ? 1 : 0)}%</div>
                 </div>
               )}

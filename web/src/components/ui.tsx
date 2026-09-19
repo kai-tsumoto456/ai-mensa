@@ -2,6 +2,7 @@ import type { ComponentProps, CSSProperties, ReactNode } from 'react';
 import { useI18n } from '../i18n';
 import type { ToolId } from '../../../src/core/types';
 import { TOOL_NAMES, toolColor } from '../format';
+import { useCountUp, useInView } from '../motion';
 
 export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(' ');
@@ -61,7 +62,7 @@ export function Button({
     <button
       type="button"
       className={cx(
-        'inline-flex cursor-pointer items-center justify-center gap-2 rounded-[3px] px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex cursor-pointer items-center justify-center gap-2 rounded-[3px] px-3 py-1.5 text-sm font-medium transition-[color,background-color,opacity,transform] duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100',
         styles[variant],
         className,
       )}
@@ -183,12 +184,46 @@ export function Tag({
   );
 }
 
-export function Meter({ value, tone = 'data', className }: { value: number; tone?: 'data' | 'accent' | 'muted'; className?: string }) {
+/** Number that counts up to `value` (and eases between values on refresh). */
+export function CountUp({
+  value,
+  from = 0,
+  duration,
+  delay,
+  start,
+  format = (n) => String(Math.round(n)),
+}: {
+  value: number;
+  from?: number;
+  duration?: number;
+  delay?: number;
+  start?: boolean;
+  format?: (n: number) => string;
+}) {
+  const v = useCountUp(value, { from, duration, delay, start });
+  return <>{format(v)}</>;
+}
+
+export function Meter({
+  value,
+  tone = 'data',
+  className,
+  delay = 0,
+}: {
+  value: number;
+  tone?: 'data' | 'accent' | 'muted';
+  className?: string;
+  delay?: number;
+}) {
+  const [ref, inView] = useInView<HTMLDivElement>();
   const v = Math.max(0, Math.min(100, value));
   const color = tone === 'data' ? 'var(--data)' : tone === 'accent' ? 'var(--accent)' : 'var(--faint)';
   return (
-    <div className={cx('relative h-1 w-full bg-sunken', className)} aria-hidden>
-      <div className="absolute inset-y-0 left-0 transition-[width] duration-700" style={{ width: `${v}%`, background: color }} />
+    <div ref={ref} className={cx('relative h-1 w-full bg-sunken', className)} aria-hidden>
+      <div
+        className="absolute inset-y-0 left-0 transition-[width] duration-1000 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+        style={{ width: inView ? `${v}%` : '0%', background: color, transitionDelay: `${delay}ms` }}
+      />
       {[25, 50, 75].map((x) => (
         <span key={x} className="absolute inset-y-0 w-px bg-paper/80" style={{ left: `${x}%` }} />
       ))}

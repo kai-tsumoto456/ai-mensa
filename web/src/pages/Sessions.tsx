@@ -144,7 +144,12 @@ function SessionRow({ s, i }: { s: SessionSummary; i: number }) {
         href={href}
         className="group relative grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-2 px-4 py-3 pl-5 transition-colors hover:bg-sunken/70 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
       >
-        <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: toolColor(s.tool) }} aria-hidden />
+        {/* tool colour strip widens on hover */}
+        <span
+          className="absolute inset-y-0 left-0 w-[3px] transition-[width] duration-200 group-hover:w-[6px]"
+          style={{ background: toolColor(s.tool) }}
+          aria-hidden
+        />
         <div className="min-w-0">
           <div className="truncate text-[14.5px] text-ink group-hover:underline group-hover:decoration-rule-strong group-hover:underline-offset-4">
             {s.title?.trim() || <span className="italic text-muted">{t('common.untitled')}</span>}

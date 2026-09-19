@@ -5,6 +5,7 @@ import { useAsync, useDataVersion } from '../hooks';
 import { useI18n } from '../i18n';
 import { fmtCompact, fmtDateTime, fmtDuration, fmtNum, relTime, TOOL_NAMES, toolColor } from '../format';
 import { Button, EmptyState, ErrorState, Skeleton, Tag, cx } from '../components/ui';
+import { useInView } from '../motion';
 
 export function SessionDetailPage({ id }: { id: string }) {
   const { t, lang } = useI18n();
@@ -112,12 +113,19 @@ function TurnItem({ turn, index }: { turn: Turn; index: number }) {
   const long = turn.text.length > LIMIT;
   const text = long && !open ? `${turn.text.slice(0, LIMIT).trimEnd()}…` : turn.text;
   const hasTokens = turn.tokensIn !== null || turn.tokensOut !== null || turn.tokensCached !== null;
+  // long sessions: reveal turns as they scroll in instead of animating hundreds at once
+  const [ref, inView] = useInView<HTMLLIElement>({ rootMargin: '0px 0px -6% 0px' });
 
   return (
-    <li className="rise relative pb-4 pl-10 sm:pl-12" style={{ '--i': Math.min(index, 10) } as CSSProperties}>
+    <li
+      ref={ref}
+      className={cx('reveal relative pb-4 pl-10 sm:pl-12', inView && 'in')}
+      style={{ transitionDelay: `${Math.min(index, 6) * 40}ms` } as CSSProperties}
+    >
       <span
         className={cx(
-          'absolute left-[8px] top-3 flex h-[15px] w-[15px] items-center justify-center rounded-full border-2 sm:left-[12px]',
+          'absolute left-[8px] top-3 flex h-[15px] w-[15px] items-center justify-center rounded-full border-2 transition-transform duration-500 sm:left-[12px]',
+          inView ? 'scale-100' : 'scale-0',
           turn.isCorrection
             ? 'border-accent bg-accent'
             : turn.interrupted

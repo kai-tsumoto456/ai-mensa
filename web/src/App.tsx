@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { api, USE_MOCK } from './api';
 import { DataVersionContext } from './hooks';
 import { useI18n, type Lang, type MsgKey } from './i18n';
@@ -102,7 +102,7 @@ export function App() {
           <div className={cx('absolute inset-x-0 top-0 h-0.5', scanning && 'progress-line')} aria-hidden />
           <div className="mx-auto flex max-w-[1320px] items-center gap-3 px-4 py-3 sm:px-6 lg:px-10">
             <a href="#/" className="flex shrink-0 items-center gap-2.5" aria-label="AI Mensa">
-              <Logo />
+              <Logo busy={scanning} />
               <span className="leading-none">
                 <span className="block font-serif text-[19px] tracking-tight text-ink">AI Mensa</span>
                 <span className="hidden font-mono text-[9.5px] uppercase tracking-[0.16em] text-muted sm:block">
@@ -110,11 +110,7 @@ export function App() {
                 </span>
               </span>
             </a>
-            <nav className="ml-6 hidden items-center gap-1 md:flex" aria-label="Main">
-              {NAV.map((n) => (
-                <NavLink key={n.key} to={n.key} active={active === n.key} label={t(n.label)} />
-              ))}
-            </nav>
+            <DesktopNav active={active} />
             <div className="ml-auto flex items-center gap-2">
               {USE_MOCK && (
                 <span className="rounded-[3px] border border-dashed border-warn px-1.5 py-px font-mono text-[10px] uppercase text-warn">
@@ -129,7 +125,7 @@ export function App() {
               </Button>
             </div>
           </div>
-          <nav className="grid grid-cols-4 border-t border-rule md:hidden" aria-label="Main">
+          <nav className="relative grid grid-cols-4 border-t border-rule md:hidden" aria-label="Main">
             {NAV.map((n) => (
               <a
                 key={n.key}
@@ -141,18 +137,26 @@ export function App() {
                 )}
               >
                 {t(n.label)}
-                {active === n.key && <span className="absolute inset-x-3 bottom-0 h-0.5 bg-accent" />}
               </a>
             ))}
+            {/* one indicator that slides between the four equal columns */}
+            <span
+              aria-hidden
+              className="nav-ink absolute bottom-0 left-0 h-0.5 bg-accent"
+              style={{ width: 'calc(25% - 24px)', transform: `translateX(calc(${NAV.findIndex((n) => n.key === active)} * (100vw / 4) + 12px))` }}
+            />
           </nav>
         </header>
 
         <main className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-          {route.page === 'overview' && <OverviewPage />}
-          {route.page === 'sessions' && <SessionsPage />}
-          {route.page === 'session' && <SessionDetailPage key={route.id} id={route.id} />}
-          {route.page === 'harness' && <HarnessPage />}
-          {route.page === 'evaluation' && <EvaluationPage />}
+          {/* keyed wrapper replays the enter animation on every route change */}
+          <div key={route.page === 'session' ? `session:${route.id}` : route.page} className="page-in">
+            {route.page === 'overview' && <OverviewPage />}
+            {route.page === 'sessions' && <SessionsPage />}
+            {route.page === 'session' && <SessionDetailPage id={route.id} />}
+            {route.page === 'harness' && <HarnessPage />}
+            {route.page === 'evaluation' && <EvaluationPage />}
+          </div>
         </main>
 
         <footer className="border-t border-rule">
@@ -188,25 +192,42 @@ export function App() {
   );
 }
 
-function NavLink({ to, active, label }: { to: string; active: boolean; label: string }) {
+function DesktopNav({ active }: { active: string }) {
+  const { t, lang } = useI18n();
+  const navRef = useRef<HTMLElement>(null);
+  const [ink, setInk] = useState<{ x: number; w: number } | null>(null);
+
+  // measure the active link so a single underline can glide between items
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = navRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
+      if (el) setInk({ x: el.offsetLeft + 12, w: el.offsetWidth - 24 });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [active, lang]);
+
   return (
-    <a
-      href={`#/${to}`}
-      aria-current={active ? 'page' : undefined}
-      className={cx(
-        'relative px-3 py-1.5 text-sm transition-colors',
-        active ? 'text-ink' : 'text-muted hover:text-ink',
+    <nav ref={navRef} className="relative ml-6 hidden items-center gap-1 md:flex" aria-label="Main">
+      {NAV.map((n) => (
+        <a
+          key={n.key}
+          href={`#/${n.key}`}
+          aria-current={active === n.key ? 'page' : undefined}
+          className={cx('relative px-3 py-1.5 text-sm transition-colors', active === n.key ? 'text-ink' : 'text-muted hover:text-ink')}
+        >
+          {t(n.label)}
+        </a>
+      ))}
+      {ink && (
+        <span
+          aria-hidden
+          className="nav-ink absolute -bottom-[13px] left-0 h-0.5 bg-accent"
+          style={{ width: ink.w, transform: `translateX(${ink.x}px)` }}
+        />
       )}
-    >
-      {label}
-      <span
-        className={cx(
-          'absolute inset-x-3 -bottom-[13px] h-0.5 bg-accent transition-transform duration-300 origin-left',
-          active ? 'scale-x-100' : 'scale-x-0',
-        )}
-        aria-hidden
-      />
-    </a>
+    </nav>
   );
 }
 
@@ -236,12 +257,12 @@ function LangToggle() {
   );
 }
 
-function Logo() {
+function Logo({ busy }: { busy?: boolean }) {
   return (
     <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden>
       <rect width="32" height="32" rx="7" fill="var(--ink)" />
       <polygon points="16,6 25,11 25,21 16,26 7,21 7,11" fill="none" stroke="var(--paper)" strokeWidth="1.4" />
-      <polygon points="16,10 22,13.5 20.5,19.5 16,22.5 10.5,19 11,13" fill="var(--accent)" />
+      <polygon className={cx('logo-core', busy && 'busy')} points="16,10 22,13.5 20.5,19.5 16,22.5 10.5,19 11,13" fill="var(--accent)" />
     </svg>
   );
 }
