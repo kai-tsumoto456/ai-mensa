@@ -1,0 +1,283 @@
+@import "tailwindcss";
+
+/*
+ * AI Mensa — "graded examination paper" look.
+ * Warm paper, ink, one red-pen accent for judgement, one teal for data.
+ * Fonts are system stacks on purpose: the app runs offline on 127.0.0.1 and
+ * must not call out to a font CDN.
+ */
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-data: var(--data);
+  --color-data-soft: var(--data-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+}
+
+@theme {
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Charter,
+    "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", Georgia, serif;
+  --font-sans: "Avenir Next", "Avenir", "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+    "Noto Sans JP", "Yu Gothic UI", system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+}
+
+:root {
+  color-scheme: light;
+  --paper: #f3efe6;
+  --surface: #fbf9f4;
+  --sunken: #ebe6da;
+  --ink: #1c1b19;
+  --ink-2: #3a3833;
+  --muted: #6b675e;
+  --faint: #9a958a;
+  --rule: #ddd6c7;
+  --rule-strong: #bdb4a2;
+  --accent: #b4432a;
+  --accent-soft: #f3ddd4;
+  --data: #2e6166;
+  --data-soft: #d5e4e2;
+  --good: #3f7a4a;
+  --good-soft: #dcebdc;
+  --warn: #9c6210;
+  --warn-soft: #f4e5c8;
+  --bad: #a8322d;
+  --bad-soft: #f5d9d6;
+  --grain-opacity: 0.35;
+
+  --tool-claude-code: #c2653d;
+  --tool-codex: #3b7688;
+  --tool-cursor: #6a7d37;
+  --tool-chatgpt: #a57f22;
+  --tool-claude-ai: #4f6592;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: #111312;
+    --surface: #171a19;
+    --sunken: #0b0d0c;
+    --ink: #ece8de;
+    --ink-2: #cfcac0;
+    --muted: #9a968c;
+    --faint: #6d6a63;
+    --rule: #2a2e2c;
+    --rule-strong: #3d4340;
+    --accent: #e27c5a;
+    --accent-soft: #3a231b;
+    --data: #7dbab2;
+    --data-soft: #1b2e2c;
+    --good: #7db887;
+    --good-soft: #1b2c1e;
+    --warn: #e0a64a;
+    --warn-soft: #33270f;
+    --bad: #ee7a70;
+    --bad-soft: #3a1b18;
+    --grain-opacity: 0.18;
+
+    --tool-claude-code: #e08a62;
+    --tool-codex: #6fb2c6;
+    --tool-cursor: #a3b86a;
+    --tool-chatgpt: #d9b25a;
+    --tool-claude-ai: #8fa3d6;
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* paper grain */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--grain-opacity);
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.4 0 0 0 0 0.32 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark) {
+  body::before {
+    mix-blend-mode: screen;
+  }
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.num {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* examiner's stamp */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.35em 0.8em 0.3em;
+  border: 2px solid var(--accent);
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+  color: var(--accent);
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 13px;
+  transform: rotate(-3.5deg);
+  border-radius: 3px;
+  animation: stamp-in 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) 0.35s both;
+}
+
+@keyframes stamp-in {
+  from {
+    opacity: 0;
+    transform: rotate(-12deg) scale(1.5);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-3.5deg) scale(1);
+  }
+}
+
+.rise {
+  animation: rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.radar-shape {
+  transform-box: view-box;
+  animation: radar-grow 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both;
+}
+@keyframes radar-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--sunken) 0%, var(--rule) 45%, var(--sunken) 90%);
+  background-size: 300% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 3px;
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+.progress-line {
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  animation: progress 1.1s linear infinite;
+}
+@keyframes progress {
+  from {
+    background-position: -40% 0;
+  }
+  to {
+    background-position: 140% 0;
+  }
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.backdrop-in {
+  animation: fade 0.18s ease-out both;
+}
+.dialog-in {
+  animation: rise 0.25s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

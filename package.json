@@ -1,0 +1,41 @@
+{
+  "name": "ai-mensa",
+  "version": "0.1.0",
+  "description": "See how you use AI. Local dashboard that scores your AI usage (AIQ) and inspects your agent harness across Claude Code, Codex, Cursor, ChatGPT and Claude.ai.",
+  "type": "module",
+  "bin": { "ai-mensa": "bin/ai-mensa.js" },
+  "files": ["bin", "dist", "README.md", "README.ja.md", "LICENSE"],
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "build": "npm run build:server && npm run build:web",
+    "build:server": "tsc -p tsconfig.json",
+    "build:web": "vite build --config web/vite.config.ts",
+    "dev:web": "vite --config web/vite.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p web/tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "keywords": ["ai", "claude-code", "codex", "cursor", "chatgpt", "llm", "analytics", "harness", "dashboard"],
+  "author": "Kai Tsumoto",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/kai-tsumoto456/ai-mensa.git" },
+  "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "fflate": "^0.8.2",
+    "hono": "^4.6.0",
+    "smol-toml": "^1.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
+  }
+}
